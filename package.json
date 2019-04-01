@@ -1,0 +1,27 @@
+{
+  "name": "react-dirname-router",
+  "version": "1.0.0",
+  "description": "boundle router.js files which use react-config-router",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "bin": {
+    "react-dirname-router": "index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DoNaEMan/react-dirname-router.git"
+  },
+  "keywords": [
+    "react",
+    "dirname",
+    "router"
+  ],
+  "author": "wq",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/DoNaEMan/react-dirname-router/issues"
+  },
+  "homepage": "https://github.com/DoNaEMan/react-dirname-router#readme"
+}
