@@ -2,8 +2,6 @@
 const path = require('path');
 const fs = require('fs');
 
-console.time('collecting react router files');
-
 // get script command params
 const params = process.argv.reverse();
 
@@ -13,20 +11,43 @@ const config = require(path.resolve(root, params[0]));
 
 if (typeof config !== 'object') throw new Error('need a config file');
 
-// 路由文件名
-const targetFilename = config.targetFilename;
-// 入口组件名
-const entryModuleName = config.entryModuleName;
-// 包含模块，即最终打包的模块
-const include = config.include;
-// 寻找路由的目录
-const targetDirectory = path.resolve(root, config.targetDirectory);
-// 入口组件
-const entryModulePath = path.resolve(root, config.entryModulePath);
-// 所要生产的router.js路径
-const rootRouterPath = path.resolve(root, config.rootRouterPath);
+const main = () => {
+  config.forEach((configItem) => {
+    let {
+      type, // 收集文件类型
+      targetFilename, // 收集的目标文件名
+      entryModuleName, // 入口组件名
+      include, // 包含模块，即最终打包的模块
+      targetDirectory, // 寻找路由的目录
+      entryModulePath, // 入口组件
+      rootRouterPath, // 生成文件路径
+      templatePath, // 自选模板文件路径
+    } = configItem;
 
-// recursion search router file
+    console.time(`collecting ${type} files...`);
+
+    // 将路径转换成绝对路径
+    [ targetDirectory, entryModulePath, rootRouterPath, templatePath ] = getAbsolutePath([targetDirectory, entryModulePath, rootRouterPath, templatePath]);
+
+    const filePathArray = searchFile(targetDirectory, targetFilename);
+
+    generate(filePathArray, type, targetFilename, entryModuleName, include, targetDirectory, entryModulePath, rootRouterPath, templatePath);
+
+    console.timeEnd(`collecting ${type} files...`);
+  });
+};
+
+// 获取绝对路径
+const getAbsolutePath = (pathArray = []) => {
+  return pathArray.map(item => {
+    if (item) {
+      return path.resolve(root, item)
+    }
+    return item;
+  })
+}
+
+// 递归查找文件
 const searchFile = (filePath, targetFilename, result = []) => {
   fs.readdirSync(filePath).forEach(filename => {
     if (filename === targetFilename) {
@@ -39,55 +60,67 @@ const searchFile = (filePath, targetFilename, result = []) => {
 };
 
 // 获取相对路径
-const getRelativePath = (thePath = '') => {
+const getRelativePath = (thePath = '', rootRouterPath) => {
   return path.relative(path.dirname(rootRouterPath), path.dirname(thePath));
 };
-// 将路径组合成驼峰式router名
+
+// 将路径组合成驼峰名
 const getRouterNamePrefix = thePath => thePath.split('/').map(item => item.replace(/^[^\w_]$/g, '').replace(/^(\w)/, (a, b) => b.toUpperCase())).join('');
 
 // 补全相对路径缺少的'./'
 const repairDirnameForImport = thePath => thePath ? `./${thePath}/` : './';
 
-const filePathArray = searchFile(targetDirectory, targetFilename);
-
 // import语句
-let moduleImportSentenceString = '';
-
-// router语句
-const moduleInfo = (thePath, fileName) => {
-  thePath = repairDirnameForImport(thePath);
-  const name = `${getRouterNamePrefix(thePath)}Router`;
+const moduleInfo = (thePath, fileName, type) => {
+  const dir = repairDirnameForImport(thePath);
+  let name = `${getRouterNamePrefix(dir)}` || fileName.replace(/\.js$/, '');
+  if (type !== 'router') {
+    name = name.replace(/^\w/, a => a.toLowerCase())
+  }
   return {
-    header: `import ${name} from '${thePath}${fileName.replace(/\.js$/, '')}';\n`,
+    header: `import ${name} from '${dir}${fileName.replace(/\.js$/, '')}';\n`,
     name,
   };
 };
-// router.js模板
-let template = fs.readFileSync(path.resolve(__dirname, './router-template.js')).toString();
+// 读取模板
+const getTemplate = (type, templatePath) => {
+  return fs.readFileSync(path.resolve(__dirname, templatePath || `./${type}-template.js`)).toString();
+};
 
-// 拼接router.js文件
-const generateRouter = (pathArray) => {
-  const App = moduleInfo(getRelativePath(entryModulePath), entryModuleName);
-  moduleImportSentenceString += App.header;
-  template = template.replace(/'@@_@@0'/, App.name);
-  let routeString = '';
-  if (pathArray && Array.isArray(pathArray)) {
-    pathArray.forEach((item) => {
-      if (include && !include.test(item)) return;
-      const thePath = getRelativePath(item);
-      const aModule = moduleInfo(thePath, targetFilename);
-      moduleImportSentenceString += aModule.header;
-      // 将文件路径名拼接到现有route的path上
-      routeString += `...addFolderNameForRoute(${aModule.name}, '/${thePath}'), `;
-    });
+// 拼接文件
+const generate = (filePathArray, type, targetFilename, entryModuleName, include, targetDirectory, entryModulePath, rootRouterPath, templatePath) => {
+  // import语句
+  let moduleImportSentenceString = '';
+  let template = getTemplate(type, templatePath, type);
+
+  if (type === 'router') {
+    const App = moduleInfo(getRelativePath(entryModulePath, rootRouterPath), entryModuleName, type);
+    moduleImportSentenceString += App.header;
+    template = template.replace(/'_@@component'/, App.name);
   }
-  routeString = routeString.replace(/, $/, '');
-  template = moduleImportSentenceString + template.replace(/'@@_@@1'/, routeString);
+
+  // 存放合拼内容到占位符_@@content
+  let contentString = '';
+  filePathArray && Array.isArray(filePathArray) && filePathArray.forEach((item) => {
+    if (include && !include.test(item)) return;
+    const thePath = getRelativePath(item, rootRouterPath);
+    const aModule = moduleInfo(thePath, targetFilename, type);
+    moduleImportSentenceString += aModule.header;
+    // 将文件路径名拼接到现有route的path上
+    switch (type) {
+      case 'router':
+        contentString += `...addFolderNameForRoute(${aModule.name}, '/${thePath}'), `;
+        break;
+      case 'reducer':
+        contentString += `${aModule.name}, `;
+        break;
+    }
+  });
+
+  contentString = contentString.replace(/, $/, '');
+  template = template.replace(/'_@@import'/, moduleImportSentenceString);
+  template = template.replace(/'_@@content'/, contentString);
   fs.writeFileSync(rootRouterPath, template);
 };
 
-generateRouter(filePathArray);
-
-console.log('\n');
-console.timeEnd('collecting react router files');
-console.log('\n');
+main();
