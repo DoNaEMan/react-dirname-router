@@ -1,5 +1,8 @@
 '_@@import'
-const addFolderNameForRoute = (routes = [], folderPathName = '') => routes.map(route => Object.assign(route, { path: folderPathName + route.path }));
+const addFolderNameForRoute = (routes = [], folderPathName = '') => routes.map(route => {
+  if (route.withoutPathName) { return route }
+  return Object.assign(route, { path: folderPathName + route.path });
+});
 
 const routes = [{
   component: '_@@component',
