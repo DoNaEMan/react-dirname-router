@@ -22,6 +22,7 @@ const main = () => {
       entryModulePath, // 入口组件
       newFilePath, // 生成新文件路径
       templatePath, // 自选模板文件路径
+      routerPrefixFilter, // router前缀过滤
     } = configItem;
 
     console.time(`collecting ${type} files...`);
@@ -31,7 +32,7 @@ const main = () => {
 
     const filePathArray = searchFile(targetDirectory, targetFilename);
 
-    generate(filePathArray, type, targetFilename, entryModuleName, include, targetDirectory, entryModulePath, newFilePath, templatePath);
+    generate(filePathArray, type, targetFilename, entryModuleName, include, targetDirectory, entryModulePath, newFilePath, templatePath, routerPrefixFilter);
 
     console.timeEnd(`collecting ${type} files...`);
   });
@@ -100,7 +101,7 @@ const getTemplate = (type, templatePath) => {
 };
 
 // 拼接文件
-const generate = (filePathArray, type, targetFilename, entryModuleName, include, targetDirectory, entryModulePath, newFilePath, templatePath) => {
+const generate = (filePathArray, type, targetFilename, entryModuleName, include, targetDirectory, entryModulePath, newFilePath, templatePath, routerPrefixFilter) => {
   // import语句
   let moduleImportSentenceString = '';
   let template = getTemplate(type, templatePath, type);
@@ -121,7 +122,11 @@ const generate = (filePathArray, type, targetFilename, entryModuleName, include,
     // 将文件路径名拼接到现有route的path上
     switch (type) {
       case 'router':
-        contentString += `...addFolderNameForRoute(${aModule.name}, '/${thePath}'), `;
+        let str = `${/^\//.test(thePath) ? '' : '/'}${thePath}`;
+        if (routerPrefixFilter) {
+          str = `${thePath}`.replace(routerPrefixFilter, '');
+        }
+        contentString += `...addFolderNameForRoute(${aModule.name}, '${str}'), `;
         break;
       case 'reducer':
         contentString += `${aModule.name}, `;
