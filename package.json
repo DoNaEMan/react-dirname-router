@@ -1,6 +1,6 @@
 {
   "name": "react-file-pack",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "description": "boundle router.js files which use react-config-router",
   "main": "index.js",
   "scripts": {

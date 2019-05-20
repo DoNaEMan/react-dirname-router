@@ -62,22 +62,22 @@ const searchFile = (filePath, targetFilename, result = []) => {
 
 // 获取相对路径
 const getRelativePath = (thePath = '', newFilePath) => {
-    let relativePath = path.relative(path.dirname(newFilePath), path.dirname(thePath));
-    // 兼容windows
-    if (~relativePath.indexOf('\\')) {
-        relativePath = relativePath.replace(/\\/g, '/');
-    }
-    return relativePath;
+  let relativePath = path.relative(path.dirname(newFilePath), path.dirname(thePath));
+  // 兼容windows
+  if (~relativePath.indexOf('\\')) {
+    relativePath = relativePath.replace(/\\/g, '/');
+  }
+  return relativePath;
 };
 
 // 将路径组合成驼峰名
 const getRouterNamePrefix = thePath => {
-    let newThePath = thePath.split('/');
-    // 兼容windows
-    if (~thePath.indexOf('\\')) {
-        newThePath = thePath.split('\\');
-    }
-    return newThePath.map(item => item.replace(/[^\w]/g, '').replace(/^(\w)/, (a, b) => b.toUpperCase())).join('');
+  let newThePath = thePath.split('/');
+  // 兼容windows
+  if (~thePath.indexOf('\\')) {
+    newThePath = thePath.split('\\');
+  }
+  return newThePath.map(item => item.replace(/[^\w]/g, '').replace(/^(\w)/, (a, b) => b.toUpperCase())).join('');
 };
 
 // 补全相对路径缺少的'./'
@@ -126,10 +126,10 @@ const generate = (filePathArray, type, targetFilename, entryModuleName, include,
         if (routerPrefixFilter) {
           str = `${thePath}`.replace(routerPrefixFilter, '');
         }
-        contentString += `...addFolderNameForRoute(${aModule.name}, '${str}'), `;
+        contentString += `\n\t\t...addFolderNameForRoute(${aModule.name}, '${str}'),`;
         break;
       case 'reducer':
-        contentString += `${aModule.name}, `;
+        contentString += `\n\t${aModule.name},`;
         break;
     }
   });
